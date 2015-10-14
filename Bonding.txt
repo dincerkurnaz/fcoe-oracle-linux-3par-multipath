@@ -1,0 +1,60 @@
+# cat /etc/sysconfig/network-scripts/ifcfg-bond0 
+DEVICE=bond0
+TYPE=Ethernet
+ONBOOT=yes
+NM_CONTROLLED=no
+BOOTPROTO=static
+IPADDR=172.16.103.12
+PREFIX=24
+GATEWAY=172.16.103.254
+DNS1=176.53.37.150
+USERCTL=no
+IPV6INIT=no
+BONDING_OPTS="mode=5 miimon=100 lacp_rate=1"
+
+# cat /etc/sysconfig/network-scripts/ifcfg-eth0
+DEVICE=eth0
+TYPE=Ethernet
+ONBOOT=yes
+NM_CONTROLLED=no
+BOOTPROTO=none
+MASTER=bond0
+SLAVE=yes
+USERCTL=no
+
+# cat /etc/sysconfig/network-scripts/ifcfg-eth2
+DEVICE=eth2
+TYPE=Ethernet
+ONBOOT=yes
+NM_CONTROLLED=no
+BOOTPROTO=none
+MASTER=bond0
+SLAVE=yes
+USERCTL=no
+
+# cat /proc/net/bonding/bond0 
+Ethernet Channel Bonding Driver: v3.7.1 (April 27, 2011)
+
+Bonding Mode: transmit load balancing
+Primary Slave: None
+Currently Active Slave: eth0
+MII Status: up
+MII Polling Interval (ms): 100
+Up Delay (ms): 0
+Down Delay (ms): 0
+
+Slave Interface: eth0
+MII Status: up
+Speed: 10000 Mbps
+Duplex: full
+Link Failure Count: 0
+Permanent HW addr: 2c:44:fd:8f:97:d0
+Slave queue ID: 0
+
+Slave Interface: eth2
+MII Status: up
+Speed: 10000 Mbps
+Duplex: full
+Link Failure Count: 0
+Permanent HW addr: 2c:44:fd:8f:8a:60
+Slave queue ID: 0
