@@ -1,0 +1,178 @@
+For Broadcom FCoE and the ALUA Setting in RHEL 6.3 / Oracle Linux or Later World Wide Names (WWNs)
+
+# lspci | grep -i BCM57810
+05:00.0 Ethernet controller: Broadcom Corporation NetXtreme II BCM57810 10 Gigabit Ethernet (rev 10)
+05:00.1 Ethernet controller: Broadcom Corporation NetXtreme II BCM57810 10 Gigabit Ethernet (rev 10)
+0b:00.0 Ethernet controller: Broadcom Corporation NetXtreme II BCM57810 10 Gigabit Ethernet (rev 10)
+0b:00.1 Ethernet controller: Broadcom Corporation NetXtreme II BCM57810 10 Gigabit Ethernet (rev 10)
+
+# lsmod | grep bnx
+bnx2fc                130159  82 
+cnic                   73322  1 bnx2fc
+libfcoe                52232  2 bnx2fc,fcoe
+libfc                 112880  3 bnx2fc,fcoe,libfcoe
+scsi_transport_fc      54538  3 bnx2fc,fcoe,libfc
+bnx2x                1500569  0 
+ptp                     9452  2 tg3,bnx2x
+libcrc32c               1252  1 bnx2x
+mdio                    4775  1 bnx2x
+
+# cd /etc/fcoe
+# cp cfg-ethx cfg-eth0
+
+# cat cfg-eth0 
+## Type:       yes/no
+## Default:    no
+# Enable/Disable FCoE service at the Ethernet port
+# Normally set to "yes"
+FCOE_ENABLE="yes"
+
+## Type:       yes/no
+## Default:    no
+# Indicate if DCB service is required at the Ethernet port
+# Normally set to "yes"
+DCB_REQUIRED="no"
+
+## Type:	yes/no
+## Default:	no
+# Indicate if VLAN discovery should be handled by fcoemon
+# Normally set to "yes"
+AUTO_VLAN="yes"
+
+## Type:	fabric/vn2vn
+## Default:	fabric
+# Indicate the mode of the FCoE operation, either fabric or vn2vn
+# Normally set to "fabric"
+MODE="fabric"
+
+## Type:	yes/no
+## Default:	no
+# Indicate whether to run a FIP responder for VLAN discovery in vn2vn mode
+#FIP_RESP="yes"
+
+# ifconfig eth0 up
+# lldptool set-lldp –i eth0 adminStatus=disabled
+
+# service lldpad restart
+# service fcoe restart
+
+# fcoeadm -l
+    Interface:        eth0.4001-fcoe
+    Roles:            FCP Target
+    Node Name:        0x2FF70002AC005857
+    Port Name:        0x20110002AC005857
+    Target ID:        0
+    MaxFrameSize:     2048
+    OS Device Name:   rport-1:0-4
+    FC-ID (Port ID):  0x010004
+    State:            Online
+
+# fcoeadm -i
+    Description:      NetXtreme II BCM57810 10 Gigabit Ethernet
+    Revision:         10
+    Manufacturer:     Broadcom Corporation
+    Serial Number:    2C44FD8F97D0
+    Driver:           bnx2x 1.712.33
+    Number of Ports:  1
+
+        Symbolic Name:     bnx2fc (QLogic BCM57810) v2.9.3 over eth0.4001-fcoe
+        OS Device Name:    host1
+        Node Name:         0x10002C44FD8F97D1
+        Port Name:         0x20002C44FD8F97D1
+        FabricName:        0x200ABCEAFA128431
+        Speed:             10 Gbit
+        Supported Speed:   1 Gbit, 10 Gbit
+        MaxFrameSize:      2048
+        FC-ID (Port ID):   0x01000B
+        State:             Online
+
+# cat /etc/multipath.conf 
+defaults {
+        polling_interval 10
+        max_fds          8192
+}
+devices {
+	device {
+		vendor			"3PARdata"
+		product			"VV"
+		path_grouping_policy	"group_by_prio"
+		getuid_callout          "/lib/udev/scsi_id --whitelisted --device=/dev/%n"
+		path_selector		"round-robin 0"
+        path_checker		"tur"
+		features                "0"
+		hardware_handler	"1 alua"
+        prio                    "alua"
+		failback		"immediate"
+		rr_weight		"uniform"
+		no_path_retry		18
+        rr_min_io               100
+        fast_io_fail_tmo        10
+        dev_loss_tmo            14
+	}
+}
+
+# chkconfig multipathd on
+
+# scsi-rescan 
+
+# fdisk -l
+
+# multipath -ll
+360002ac0000000000000001a00005857 dm-4 3PARdata,VV
+size=2.0G features='1 queue_if_no_path' hwhandler='1 alua' wp=rw
+`-+- policy='round-robin 0' prio=50 status=active
+  |- 2:0:0:14 sdk  8:160  active ready running
+  |- 1:0:0:14 sdae 65:224 active ready running
+  |- 2:0:1:4  sdp  8:240  active ready running
+  |- 1:0:1:4  sdaj 66:48  active ready running
+  |- 2:0:1:14 sdu  65:64  active ready running
+  |- 1:0:1:14 sdao 66:128 active ready running
+  |- 2:0:0:4  sdf  8:80   active ready running
+  `- 1:0:0:4  sdz  65:144 active ready running
+
+# lsscsi 
+[0:0:0:0]    disk    HP       LOGICAL VOLUME   2.14  /dev/sda 
+[0:3:0:0]    storage HP       P440ar           2.14  -       
+[2:0:0:0]    disk    3PARdata VV               3212  /dev/sdb 
+[2:0:0:1]    disk    3PARdata VV               3212  /dev/sdc 
+[2:0:0:2]    disk    3PARdata VV               3212  /dev/sdd 
+[2:0:0:3]    disk    3PARdata VV               3212  /dev/sde 
+
+# multipath -v 3 
+
+# systool -c fc_host -v
+Class = "fc_host"
+
+  Class Device = "host1"
+  Class Device path = "/sys/devices/pci0000:00/0000:00:02.0/0000:05:00.0/host1/fc_host/host1"
+    active_fc4s         = "0x00 0x00 0x01 0x00 0x00 0x00 0x00 0x01 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 "
+    dev_loss_tmo        = "60"
+    fabric_name         = "0x200abceafa128431"
+    issue_lip           = <store method only>
+    max_npiv_vports     = "64"
+    maxframe_size       = "2048 bytes"
+    node_name           = "0x10002c44fd8f97d1"
+    npiv_vports_inuse   = "0"
+    port_id             = "0x01000b"
+    port_name           = "0x20002c44fd8f97d1"
+    port_state          = "Online"
+    port_type           = "NPort (fabric via point-to-point)"
+    speed               = "10 Gbit"
+    supported_classes   = "Class 3"
+    supported_fc4s      = "0x00 0x00 0x01 0x00 0x00 0x00 0x00 0x01 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 "
+    supported_speeds    = "1 Gbit, 10 Gbit"
+    symbolic_name       = "bnx2fc (QLogic BCM57810) v2.9.3 over eth0.4001-fcoe"
+    tgtid_bind_type     = "wwpn (World Wide Port Name)"
+    uevent              = 
+    vport_create        = <store method only>
+    vport_delete        = <store method only>
+
+    Device = "host1"
+    Device path = "/sys/devices/pci0000:00/0000:00:02.0/0000:05:00.0/host1"
+      uevent              = "DEVTYPE=scsi_host"
+
+# sg_map -x
+/dev/sg0  0 3 0 0  12
+/dev/sg1  0 0 0 0  0  /dev/sda
+/dev/sg2  2 0 0 0  0  /dev/sdb
+/dev/sg3  2 0 0 1  0  /dev/sdc
